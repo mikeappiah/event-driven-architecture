@@ -1,0 +1,17 @@
+version = 0.1
+
+[dev]
+[dev.deploy]
+[dev.deploy.parameters]
+stack_name = "s3-event-driven-stack-dev"
+region = "eu-central-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=\"dev\" EmailAddresses=\"michael.appiah@amalitech.com,mke.appiah@gmail.com\""
+
+[prod]
+[prod.deploy]
+[prod.deploy.parameters]
+stack_name = "s3-event-driven-stack-prod"
+region = "eu-central-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=\"prod\" EmailAddresses=\"michael.appiah@amalitech.com,mke.appiah@gmail.com\""

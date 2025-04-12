@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Event-Driven Architecture with S3, Lambda, and SNS
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, prod]
+    Default: dev
+  EmailAddresses:
+    Type: CommaDelimitedList
+    Description: List of email addresses to subscribe to SNS (comma-separated)
+
+Globals:
+  Function:
+    Runtime: nodejs18.x
+    Timeout: 10
+
+Resources:
+  # S3 Bucket for Application Data
+  UploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub s3-event-driven-bucket-${Environment}-${AWS::AccountId}
+
+  # Lambda Function with S3 Event
+  NotifyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      CodeUri: lambda/
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+              Resource:
+                - !Sub arn:aws:s3:::s3-event-driven-bucket-${Environment}-${AWS::AccountId}
+                - !Sub arn:aws:s3:::s3-event-driven-bucket-${Environment}-${AWS::AccountId}/*
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sns:Publish
+              Resource: !Ref NotificationTopic
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+      Events:
+        S3Event:
+          Type: S3
+          Properties:
+            Bucket: !Ref UploadBucket
+            Events: s3:ObjectCreated:*
+
+  # SNS Topic
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub upload-notification-${Environment}
+
+  # SNS Subscription for First Email
+  EmailSubscription1:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref NotificationTopic
+      Endpoint: !Select [0, !Ref EmailAddresses]
+
+  # SNS Subscription for Second Email
+  EmailSubscription2:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref NotificationTopic
+      Endpoint: !Select [1, !Ref EmailAddresses]
+
+Outputs:
+  BucketName:
+    Value: !Ref UploadBucket
+    Description: Name of the S3 bucket
+  TopicArn:
+    Value: !Ref NotificationTopic
+    Description: ARN of the SNS topic
+  FunctionName:
+    Value: !Ref NotifyFunction
+    Description: Name of the Lambda function
